@@ -462,6 +462,23 @@ class ProcessTest(unittest.TestCase):
         best = process.extractOne(query, choices)
         self.assertEqual(best[0], choices[1])
 
+    def test_score_cutoff_out_of_range_raises(self):
+        """score_cutoff outside 0..100 must raise ValueError, not TypeError."""
+        with self.assertRaises(ValueError) as ctx:
+            process.extractOne('a', ['a', 'b'], score_cutoff=101)
+        self.assertEqual(
+            str(ctx.exception),
+            "score_cutoff must be None or in the range 0.0 - 100.0",
+        )
+        with self.assertRaises(ValueError):
+            process.extractBests('a', ['a', 'b'], score_cutoff=-1)
+        with self.assertRaises(ValueError):
+            list(process.extractWithoutOrder('a', ['a'], score_cutoff=100.1))
+        self.assertEqual(
+            process.extractOne('a', ['a', 'b'], score_cutoff=100),
+            ('a', 100),
+        )
+
     def test_list_like_extract(self):
         """We should be able to use a list-like object for choices."""
         def generate_choices():
