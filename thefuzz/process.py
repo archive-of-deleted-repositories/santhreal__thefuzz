@@ -86,8 +86,12 @@ def _validate_query_preprocessing(query, processor):
 
 
 def _validate_score_cutoff(score_cutoff):
-    if score_cutoff is not None and not (0.0 <= score_cutoff <= 100.0):
-        raise ValueError("score_cutoff must be None or in the range 0.0 - 100.0")
+    # Scores are at most 100; higher cutoffs can never match (return False).
+    if score_cutoff is None:
+        return True
+    if score_cutoff < 0:
+        raise ValueError("score_cutoff must be None or >= 0")
+    return score_cutoff <= 100.0
 
 
 @t.overload
@@ -149,7 +153,7 @@ def extractWithoutOrder(
             choice to be strings.
         score_cutoff: Optional argument for score threshold. No matches with
             a score less than this number will be returned. Defaults to 0.
-            Must be None or in [0.0, 100.0]; other values raise ValueError.
+            Negative values raise ValueError. Values above 100 yield nothing.
 
     Returns:
         Generator of tuples containing the match and its score.
@@ -166,7 +170,8 @@ def extractWithoutOrder(
 
         ('train', 22, 'bard'), ('man', 0, 'dog')
     """
-    _validate_score_cutoff(score_cutoff)
+    if not _validate_score_cutoff(score_cutoff):
+        return
     is_mapping = hasattr(choices, "items")
     is_lowered = scorer in _scorer_lowering
 
@@ -308,13 +313,14 @@ def extractBests(
         scorer: Scoring function for extract().
         score_cutoff: Optional argument for score threshold. No matches with
             a score less than this number will be returned. Defaults to 0.
-            Must be None or in [0.0, 100.0]; other values raise ValueError.
+            Negative values raise ValueError. Values above 100 yield nothing.
         limit: Optional maximum for the number of elements returned. Defaults
             to 5.
 
     Returns: A a list of (match, score) tuples.
     """
-    _validate_score_cutoff(score_cutoff)
+    if not _validate_score_cutoff(score_cutoff):
+        return []
     is_mapping = hasattr(choices, "items")
     is_lowered = scorer in _scorer_lowering
 
@@ -381,13 +387,14 @@ def extractOne(
         score_cutoff: Optional argument for score threshold. If the best
             match is found, but it is not greater than this number, then
             return None anyway ("not a good enough match").  Defaults to 0.
-            Must be None or in [0.0, 100.0]; other values raise ValueError.
+            Negative values raise ValueError. Values above 100 return None.
 
     Returns:
         A tuple containing a single match and its score, if a match
         was found that was above score_cutoff. Otherwise, returns None.
     """
-    _validate_score_cutoff(score_cutoff)
+    if not _validate_score_cutoff(score_cutoff):
+        return None
     is_mapping = hasattr(choices, "items")
     is_lowered = scorer in _scorer_lowering
 
